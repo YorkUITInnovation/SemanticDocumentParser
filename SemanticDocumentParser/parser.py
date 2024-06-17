@@ -33,19 +33,21 @@ class SemanticDocumentParser(BaseModel):
 
     async def aparse(
             self,
-            document: io.BytesIO
+            document: io.BytesIO,
+            document_filename: str
     ) -> Tuple[List[Element], SemanticDocumentParserStats]:
         """
         Asynchronously (where possible) parse the document
 
         :param document: The document to parse of any type unstructured supports
+        :param document_filename: The name of the doc
         :return: A list of elements existing as distinct chunks of NarrativeText
 
         """
 
         # Generate the document-agnostic array
         _1_start_time: int = int(time.time())
-        elements: List[Element] = partition(file=document)
+        elements: List[Element] = partition(file=document, metadata_filename=document_filename)
         _1_end_time: int = int(time.time())
 
         # If there are no elements, don't run the parsers
