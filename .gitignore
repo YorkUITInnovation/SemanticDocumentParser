@@ -1,0 +1,6 @@
+.idea
+.venv
+*.docx
+test.py
+requirements.txt
+*.pdf
