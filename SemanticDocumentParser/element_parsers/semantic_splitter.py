@@ -46,7 +46,7 @@ def _create_element_groups(elements: List[Element]) -> List[ElementGroup]:
         element_groups.append(current_group)
 
     # If no groups, then return the original list
-    return element_groups if element_groups else elements
+    return element_groups if element_groups else [ElementGroup(title_node=None, nodes=elements)]
 
 
 async def _semantic_split_node(
