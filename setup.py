@@ -28,7 +28,7 @@ if __name__ == '__main__':
             "llama-index-core",
             "llama-index-llms-azure-openai",
             "llama-index-embeddings-azure-openai",
-            " unstructured[all-docs]",
+            "unstructured[all-docs]==0.14.6",
             "numpy==1.26.4"
         ],
         classifiers=[
