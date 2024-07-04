@@ -12,6 +12,7 @@ from SemanticDocumentParser.element_parsers.list_parser import list_parser
 from SemanticDocumentParser.element_parsers.metadata_parser import metadata_parser
 from SemanticDocumentParser.element_parsers.semantic_splitter import semantic_splitter
 from SemanticDocumentParser.element_parsers.semantic_tables import semantic_tables
+from SemanticDocumentParser.llama_extensions.node_parser import AsyncSemanticSplitterNodeParser
 
 
 class SemanticDocumentParserStats(TypedDict):
@@ -29,7 +30,7 @@ class SemanticDocumentParser(BaseModel):
     """
 
     llm_model: LLM
-    node_parser: SemanticSplitterNodeParser
+    node_parser: AsyncSemanticSplitterNodeParser
 
     async def aparse(
             self,

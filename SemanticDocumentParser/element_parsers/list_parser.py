@@ -62,9 +62,7 @@ def list_parser(elements: List[Element]) -> List[Element]:
 
     """
 
-    print(elements)
     nodes: List[Element] = []
-
     header_node: Optional[Element] = None
 
     list_group: List[ListItem] = []
@@ -89,7 +87,7 @@ def list_parser(elements: List[Element]) -> List[Element]:
                 nodes.extend(_list_group_parser(list_group, header_node))
                 list_group = []
                 header_node = None
-        print('got one', type(last_node))
+
         last_node = element
 
     return nodes

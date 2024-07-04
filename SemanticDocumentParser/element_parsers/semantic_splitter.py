@@ -1,10 +1,12 @@
 import asyncio
-import functools
-from typing import List, TypedDict, Optional
+import itertools
+from asyncio import Task
+from typing import List, TypedDict, Optional, Tuple
 
-from llama_index.core.node_parser import SemanticSplitterNodeParser
 from llama_index.core.schema import TextNode, Document
 from unstructured.documents.elements import Element, Title, NarrativeText
+
+from SemanticDocumentParser.llama_extensions.node_parser import AsyncSemanticSplitterNodeParser
 
 
 class ElementGroup(TypedDict):
@@ -27,7 +29,7 @@ def _create_element_groups(elements: List[Element]) -> List[ElementGroup]:
     """
 
     element_groups: List[ElementGroup] = []
-    current_group = None
+    current_group = ElementGroup(title_node=None, nodes=[])
 
     # Parse groups
     for element in elements:
@@ -52,7 +54,7 @@ def _create_element_groups(elements: List[Element]) -> List[ElementGroup]:
 async def _semantic_split_node(
         title_node: Optional[Title],
         node: NarrativeText,
-        node_parser: SemanticSplitterNodeParser
+        node_parser: AsyncSemanticSplitterNodeParser
 ) -> List[NarrativeText]:
     """
     Run semantic splitting on each text node to subdivide bulky paragraphs into semantic units
@@ -70,18 +72,14 @@ async def _semantic_split_node(
     )
 
     # Note: Produces Llama-Index nodes
-    llama_nodes: List[TextNode] = await asyncio.to_thread(
-        functools.partial(
-            node_parser.build_semantic_nodes_from_documents,
-            documents=[document]
-        )
+    llama_nodes: List[TextNode] = await node_parser.abuild_semantic_nodes_from_documents(
+        documents=[document]
     )
 
     elements: List[NarrativeText] = []
     title_text: str = title_node.text if title_node else ""
     # Regenerate NarrativeText elements
     for llama_node in llama_nodes:
-
         elements.append(
             NarrativeText(
                 # The title node may be important to describe the node contents
@@ -95,7 +93,8 @@ async def _semantic_split_node(
 
 async def _semantic_split_element_group(
         group: ElementGroup,
-        node_parser: SemanticSplitterNodeParser
+        node_parser: AsyncSemanticSplitterNodeParser,
+        i
 ):
     """
     Process an element group. Semantically split paragraphs into further nodes.
@@ -114,6 +113,8 @@ async def _semantic_split_element_group(
         )
     ]
 
+    parse_tasks: List[Task] = []
+
     for node in group['nodes']:
 
         # Other node types can be parsed as their own semantic units & just need to be passed on
@@ -121,21 +122,23 @@ async def _semantic_split_element_group(
             nodes.append(node)
             continue
 
-        # Add the splits
-        nodes.extend(
-            await _semantic_split_node(
-                group['title_node'],
-                node,
-                node_parser
+        parse_tasks.append(
+            asyncio.create_task(
+                _semantic_split_node(
+                    group['title_node'],
+                    node,
+                    node_parser
+                )
             )
         )
 
-    return nodes
+    parse_result: Tuple[List[Element]] = await asyncio.gather(*parse_tasks)
+    return list(itertools.chain.from_iterable(parse_result))
 
 
 async def semantic_splitter(
         elements: List[Element],
-        node_parser: SemanticSplitterNodeParser
+        node_parser: AsyncSemanticSplitterNodeParser
 ) -> List[Element]:
     """
 
@@ -159,15 +162,18 @@ async def semantic_splitter(
 
     # Split into groups between Title elements
     element_groups: List[ElementGroup] = _create_element_groups(elements)
-    nodes: List[Element] = []
+    parse_tasks: List[Task] = []
 
-    for group in element_groups:
-        # Add them to the 1D array
-        nodes.extend(
-            await _semantic_split_element_group(
-                group,
-                node_parser
+    for idx, group in enumerate(element_groups):
+        parse_tasks.append(
+            asyncio.create_task(
+                _semantic_split_element_group(
+                    group,
+                    node_parser,
+                    idx
+                )
             )
         )
 
-    return nodes
+    parse_result: Tuple[List[Element]] = await asyncio.gather(*parse_tasks)
+    return list(itertools.chain.from_iterable(parse_result))
