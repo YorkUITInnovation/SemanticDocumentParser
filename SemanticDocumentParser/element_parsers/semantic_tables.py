@@ -1,15 +1,13 @@
 import asyncio
 import json
 import logging
-import re
 import textwrap
 import traceback
 from json import JSONDecodeError
 from typing import List, Awaitable, Optional, Union
 
-from llama_index.core.base.llms.types import ChatResponse
+from llama_index.core.base.llms.types import ChatResponse, ChatMessage
 from llama_index.core.llms import LLM
-from llama_index_client import ChatMessage
 from unstructured.documents.elements import Element, Table, NarrativeText, Title
 
 SemanticUnitsTemplate: ChatMessage = ChatMessage(
