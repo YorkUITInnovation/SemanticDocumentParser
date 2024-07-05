@@ -3,7 +3,6 @@ import time
 from typing import List, Tuple, TypedDict, Optional
 
 from llama_index.core.llms import LLM
-from llama_index.core.node_parser import SemanticSplitterNodeParser
 from pydantic.v1 import BaseModel
 from unstructured.documents.elements import Element
 from unstructured.partition.auto import partition
@@ -12,6 +11,7 @@ from SemanticDocumentParser.element_parsers.list_parser import list_parser
 from SemanticDocumentParser.element_parsers.metadata_parser import metadata_parser
 from SemanticDocumentParser.element_parsers.semantic_splitter import semantic_splitter
 from SemanticDocumentParser.element_parsers.semantic_tables import semantic_tables
+from SemanticDocumentParser.element_parsers.window_parser import window_parser
 from SemanticDocumentParser.llama_extensions.node_parser import AsyncSemanticSplitterNodeParser
 
 
@@ -21,6 +21,7 @@ class SemanticDocumentParserStats(TypedDict):
     paragraph_parse_time: Optional[int]
     list_parse_time: Optional[int]
     table_parse_time: Optional[int]
+    window_parse_time: Optional[int]
 
 
 class SemanticDocumentParser(BaseModel):
@@ -36,7 +37,7 @@ class SemanticDocumentParser(BaseModel):
             self,
             document: io.BytesIO,
             document_filename: str
-    ) -> Tuple[List[Element], SemanticDocumentParserStats]:
+    ) -> Tuple[List[dict], SemanticDocumentParserStats]:
         """
         Asynchronously (where possible) parse the document
 
@@ -82,12 +83,17 @@ class SemanticDocumentParser(BaseModel):
         elements = await semantic_tables(elements, self.llm_model)
         _5_end_time: int = int(time.time())
 
+        _6_start_time: int = int(time.time())
+        elements: List[dict] = window_parser(elements)
+        _6_end_time: int = int(time.time())
+
         stats: SemanticDocumentParserStats = {
             "element_parse_time": _1_end_time - _1_start_time,
             "metadata_parse_time": _2_end_time - _2_start_time,
             "paragraph_parse_time": _3_end_time - _3_start_time,
             "list_parse_time": _4_end_time - _4_start_time,
             "table_parse_time": _5_end_time - _5_start_time,
+            "window_parse_time": _6_end_time - _6_start_time,
         }
 
         return elements, stats
