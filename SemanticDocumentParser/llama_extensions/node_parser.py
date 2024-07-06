@@ -2,7 +2,7 @@ from typing import Sequence, List
 
 from llama_index.core.node_parser import SemanticSplitterNodeParser
 from llama_index.core.node_parser.node_utils import build_nodes_from_splits
-from llama_index.core.schema import BaseNode, Document, TextNode
+from llama_index.core.schema import BaseNode, Document
 
 
 class AsyncSemanticSplitterNodeParser(SemanticSplitterNodeParser):
@@ -11,7 +11,7 @@ class AsyncSemanticSplitterNodeParser(SemanticSplitterNodeParser):
             self,
             documents: Sequence[Document],
             show_progress: bool = False,
-    ) -> List[TextNode]:
+    ) -> List[BaseNode]:
         """Build window nodes from documents.
         <Same as regular but uses async embeddings call>
         """
