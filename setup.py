@@ -28,7 +28,7 @@ if __name__ == '__main__':
             "llama-index-core",
             "llama-index-llms-azure-openai",
             "llama-index-embeddings-azure-openai",
-            "unstructured[all-docs]==0.15.2",
+            "git+https://github.com/Unstructured-IO/unstructured.git@7437f0a0840b1554904af7aa261f1038760b1b9c",
             "numpy==1.26.4"
         ],
         classifiers=[
