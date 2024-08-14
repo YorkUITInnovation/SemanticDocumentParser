@@ -7,7 +7,7 @@ manifest: dict = {
     "name": "SemanticDocumentParser",
     "license": "MIT",
     "author": "Isaac Kogan",
-    "version": "0.0.9",
+    "version": "0.1.0",
     "email": "info@isaackogan.com"
 }
 
@@ -28,7 +28,7 @@ if __name__ == '__main__':
             "llama-index-core",
             "llama-index-llms-azure-openai",
             "llama-index-embeddings-azure-openai",
-            "unstructured[all-docs]==0.14.6",
+            "unstructured[all-docs]==0.15.2",
             "numpy==1.26.4"
         ],
         classifiers=[
