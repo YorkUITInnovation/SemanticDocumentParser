@@ -30,7 +30,7 @@ if __name__ == '__main__':
             "llama-index-embeddings-azure-openai",
 
             # Manually install 0.15.4 until the next release
-            "unstructured[all-docs] @ git+https://github.com/Unstructured-IO/unstructured@9b778e270dd8547476370a9417520679cd46c802",
+            "unstructured[all-docs]==0.15.1",
             "numpy==1.26.4"
         ],
         classifiers=[
