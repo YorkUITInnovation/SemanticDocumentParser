@@ -7,7 +7,7 @@ manifest: dict = {
     "name": "SemanticDocumentParser",
     "license": "MIT",
     "author": "Isaac Kogan",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "email": "info@isaackogan.com"
 }
 
@@ -30,7 +30,7 @@ if __name__ == '__main__':
             "llama-index-embeddings-azure-openai",
 
             # Manually install 0.15.4 until the next release
-            "unstructured[all-docs]==0.15.1",
+            "unstructured[all-docs]==0.15.7",
             "numpy==1.26.4"
         ],
         classifiers=[
