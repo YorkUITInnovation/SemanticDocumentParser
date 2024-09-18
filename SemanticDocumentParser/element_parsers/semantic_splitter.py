@@ -122,10 +122,6 @@ async def _semantic_split_element_group(
 
         # Other node types can be parsed as their own semantic units & just need to be passed on
         if not isinstance(node, NarrativeText) or node.metadata.data_source == "GENERATED":
-            # if "GENERATED" it means we generated it so don't process it
-            if node.metadata.signature == PARSER_GENERATED_SIGNATURE:
-                print('skipping generated node')
-
             nodes.append(node)
             continue
 
