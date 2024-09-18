@@ -30,7 +30,7 @@ if __name__ == '__main__':
             "llama-index-embeddings-azure-openai==0.1.11",
 
             # Manually install 0.15.4 until the next release
-            "unstructured[all-docs]==0.15.7",
+            "unstructured[all-docs]==0.15.12",
             "numpy==1.26.4"
         ],
         classifiers=[
