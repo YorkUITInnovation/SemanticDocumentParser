@@ -4,7 +4,6 @@ from typing import List, Tuple, TypedDict, Optional
 
 from llama_index.core.llms import LLM
 from pydantic.v1 import BaseModel
-from unstructured.documents.elements import Table
 from unstructured.partition.auto import partition
 
 from SemanticDocumentParser.element_parsers.al_tables import al_table_parser

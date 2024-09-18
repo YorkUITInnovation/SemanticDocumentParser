@@ -28,8 +28,8 @@ if __name__ == '__main__':
             "llama-index-core==0.10.66",
             "llama-index-llms-azure-openai==0.1.10",
             "llama-index-embeddings-azure-openai==0.1.11",
-
-            # Manually install 0.15.4 until the next release
+            "bs4",
+            "pandas",
             "unstructured[all-docs]==0.15.12",
             "numpy==1.26.4"
         ],
