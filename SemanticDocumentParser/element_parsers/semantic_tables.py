@@ -190,6 +190,8 @@ async def semantic_tables(elements: List[Element], llm) -> List[Element]:
     """
     Semantically separate tables into natural language using an LLM
 
+    [WARNING: CONSUMES THE TABLE, SO IT IS NO LONGER AN ELEMENT. RUN THIS LAST.]
+
     :param elements: The elements in the table
     :param llm: The LLM to use for comprehension of the table
     :return: The list of elements parsed from the table

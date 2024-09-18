@@ -91,6 +91,9 @@ async def _semantic_split_node(
     return elements
 
 
+PARSER_GENERATED_SIGNATURE = "PARSER_GENERATED"
+
+
 async def _semantic_split_element_group(
         group: ElementGroup,
         node_parser: AsyncSemanticSplitterNodeParser,
@@ -118,7 +121,11 @@ async def _semantic_split_element_group(
     for node in group['nodes']:
 
         # Other node types can be parsed as their own semantic units & just need to be passed on
-        if not isinstance(node, NarrativeText):
+        if not isinstance(node, NarrativeText) or node.metadata.data_source == "GENERATED":
+            # if "GENERATED" it means we generated it so don't process it
+            if node.metadata.signature == PARSER_GENERATED_SIGNATURE:
+                print('skipping generated node')
+
             nodes.append(node)
             continue
 
@@ -133,7 +140,8 @@ async def _semantic_split_element_group(
         )
 
     parse_result: Tuple[List[Element]] = await asyncio.gather(*parse_tasks)
-    return list(itertools.chain.from_iterable(parse_result))
+    nodes.extend(list(itertools.chain.from_iterable(parse_result)))
+    return nodes
 
 
 async def semantic_splitter(

@@ -4,8 +4,10 @@ from typing import List, Tuple, TypedDict, Optional
 
 from llama_index.core.llms import LLM
 from pydantic.v1 import BaseModel
+from unstructured.documents.elements import Table
 from unstructured.partition.auto import partition
 
+from SemanticDocumentParser.element_parsers.al_tables import al_table_parser
 from SemanticDocumentParser.element_parsers.list_parser import list_parser
 from SemanticDocumentParser.element_parsers.metadata_parser import metadata_parser
 from SemanticDocumentParser.element_parsers.remove_small import remove_small
@@ -21,7 +23,8 @@ class SemanticDocumentParserStats(TypedDict):
     metadata_parse_time: Optional[float]
     paragraph_parse_time: Optional[float]
     list_parse_time: Optional[float]
-    table_parse_time: Optional[float]
+    table_parse_time_strategy_1: Optional[float]
+    table_parse_time_strategy_2: Optional[float]
     combine_window_time: Optional[float]
 
 
@@ -64,7 +67,8 @@ class SemanticDocumentParser(BaseModel):
                 "metadata_parse_time": None,
                 "paragraph_parse_time": None,
                 "list_parse_time": None,
-                "table_parse_time": None,
+                "table_parse_time_strategy_1": None,
+                "table_parse_time_strategy_2": None,
                 "combine_window_time": None
             }
 
@@ -72,6 +76,12 @@ class SemanticDocumentParser(BaseModel):
 
         # Parse document metadata
         metadata_parse_time, _ = with_timings_sync(fn=functools.partial(metadata_parser, elements))
+
+        # Parse tables strategy 1 [DOES NOT CONSUME TABLE ELEMENTS]
+        # Must occur BEFORE the semantic splitter
+        table_parse_time_strategy_1, elements = with_timings_sync(
+            fn=functools.partial(al_table_parser, elements)
+        )
 
         # Group elements by title separation, then split unrelated texts into smaller ones
         paragraph_parse_time, elements = await with_timings_async(semantic_splitter(elements, self.node_parser))
@@ -85,8 +95,8 @@ class SemanticDocumentParser(BaseModel):
             fn=functools.partial(window_parser, elements)
         )
 
-        # Parse tables
-        table_parse_time, elements = await with_timings_async(
+        # Parse tables strategy 2 [CONSUMES TABLE ELEMENTS]
+        table_parse_time_strategy_2, elements = await with_timings_async(
             semantic_tables(
                 elements,
                 self.llm_model
@@ -100,7 +110,8 @@ class SemanticDocumentParser(BaseModel):
                 metadata_parse_time=metadata_parse_time,
                 paragraph_parse_time=paragraph_parse_time,
                 list_parse_time=list_parse_time,
-                table_parse_time=table_parse_time,
+                table_parse_time_strategy_1=table_parse_time_strategy_1,
+                table_parse_time_strategy_2=table_parse_time_strategy_2,
                 combine_window_time=combine_window_time,
             )
         )
