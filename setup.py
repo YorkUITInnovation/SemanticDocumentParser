@@ -25,12 +25,14 @@ if __name__ == '__main__':
         long_description=long_description,
         long_description_content_type="text/markdown",
         install_requires=[
-            "llama-index-core==0.10.66",
-            "llama-index-llms-azure-openai==0.1.10",
-            "llama-index-embeddings-azure-openai==0.1.11",
+            "llama-index-core==0.11.21",
+            "llama-index-llms-azure-openai==0.2.2",
+            "llama-index-multi-modal-llms-azure-openai==0.2.0",
+            "llama-index-embeddings-azure-openai==0.2.5",
             "bs4",
             "pandas",
-            "unstructured[all-docs]==0.15.12",
+            "unstructured[all-docs]==0.16.4",
+            "unstructured_expanded==0.16.4.post2"
             "numpy==1.26.4"
         ],
         classifiers=[

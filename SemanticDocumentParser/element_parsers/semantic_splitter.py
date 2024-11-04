@@ -3,8 +3,8 @@ import itertools
 from asyncio import Task
 from typing import List, TypedDict, Optional, Tuple
 
-from llama_index.core.schema import TextNode, Document
-from unstructured.documents.elements import Element, Title, NarrativeText
+from llama_index.core.schema import Document, BaseNode
+from unstructured.documents.elements import Element, Title, NarrativeText, Image
 
 from SemanticDocumentParser.llama_extensions.node_parser import AsyncSemanticSplitterNodeParser
 
@@ -72,7 +72,7 @@ async def _semantic_split_node(
     )
 
     # Note: Produces Llama-Index nodes
-    llama_nodes: List[TextNode] = await node_parser.abuild_semantic_nodes_from_documents(
+    llama_nodes: List[BaseNode] = await node_parser.abuild_semantic_nodes_from_documents(
         documents=[document]
     )
 
@@ -96,8 +96,7 @@ PARSER_GENERATED_SIGNATURE = "PARSER_GENERATED"
 
 async def _semantic_split_element_group(
         group: ElementGroup,
-        node_parser: AsyncSemanticSplitterNodeParser,
-        i
+        node_parser: AsyncSemanticSplitterNodeParser
 ):
     """
     Process an element group. Semantically split paragraphs into further nodes.
@@ -121,7 +120,7 @@ async def _semantic_split_element_group(
     for node in group['nodes']:
 
         # Other node types can be parsed as their own semantic units & just need to be passed on
-        if not isinstance(node, NarrativeText) or node.metadata.data_source == "GENERATED":
+        if (not isinstance(node, NarrativeText)) or node.metadata.data_source == "GENERATED":
             nodes.append(node)
             continue
 
@@ -168,13 +167,11 @@ async def semantic_splitter(
     element_groups: List[ElementGroup] = _create_element_groups(elements)
     parse_tasks: List[Task] = []
 
-    for idx, group in enumerate(element_groups):
+    for group in element_groups:
         parse_tasks.append(
             asyncio.create_task(
                 _semantic_split_element_group(
-                    group,
-                    node_parser,
-                    idx
+                    group, node_parser
                 )
             )
         )
