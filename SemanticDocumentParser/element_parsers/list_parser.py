@@ -17,12 +17,15 @@ def _list_group_parser(elements: List[ListItem], header_node: Optional[Narrative
     header_text: str = header_node.text + "\n\n" if header_node else ""
     footer_text: str = f" There were {len(elements)} items."
 
-    # Create an overall node with everything in it
-    nodes.append(
-        NarrativeText(
-            text=header_text + "\n".join(["- " + element.text for element in elements]) + footer_text,
+    # For SMALL lists, combine all items into one node.
+    # For large lists, we can't do this as it will be too long and combined with windows, exceed max context.
+    potential_node_text: str = header_text + "\n".join(["- " + element.text for element in elements]) + footer_text
+    if len(potential_node_text) < 750:
+        nodes.append(
+            NarrativeText(
+                text=potential_node_text,
+            )
         )
-    )
 
     # Create NarrativeText elements from each ListItem
     for idx, element in enumerate(elements):

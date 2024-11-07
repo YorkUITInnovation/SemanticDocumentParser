@@ -4,7 +4,7 @@ from asyncio import Task
 from typing import List, TypedDict, Optional, Tuple
 
 from llama_index.core.schema import Document, BaseNode
-from unstructured.documents.elements import Element, Title, NarrativeText, Image
+from unstructured.documents.elements import Element, Title, NarrativeText
 
 from SemanticDocumentParser.llama_extensions.node_parser import AsyncSemanticSplitterNodeParser
 
@@ -78,6 +78,7 @@ async def _semantic_split_node(
 
     elements: List[NarrativeText] = []
     title_text: str = title_node.text if title_node else ""
+
     # Regenerate NarrativeText elements
     for llama_node in llama_nodes:
         elements.append(
@@ -107,14 +108,7 @@ async def _semantic_split_element_group(
     """
 
     # First represent the entire group itself, in case that provides more complete meaning
-    title_text: str = group['title_node'].text + "\n\n" if group['title_node'] else ""
-
-    nodes: List[Element] = [
-        NarrativeText(
-            text=title_text + " ".join([e.text for e in group['nodes']]),
-        )
-    ]
-
+    nodes: List[Element] = []
     parse_tasks: List[Task] = []
 
     for node in group['nodes']:

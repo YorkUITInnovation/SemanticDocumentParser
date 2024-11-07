@@ -124,13 +124,13 @@ class SemanticDocumentParser(BaseModel):
             fn=functools.partial(al_table_parser, elements)
         )
 
+        # Group the list items into individual nodes
+        list_parse_time, elements = with_timings_sync(fn=functools.partial(list_parser, elements))
+
         # Group elements by title separation, then split unrelated texts into smaller ones
         # Note that the way grouping is set up, the auto-caption will be used in the 'Title' element since these descriptions
         # tend to be longer & we don't want to pollute
         paragraph_parse_time, elements = await with_timings_async(semantic_splitter(elements, self.node_parser))
-
-        # Group the list items into individual nodes
-        list_parse_time, elements = with_timings_sync(fn=functools.partial(list_parser, elements))
 
         # Parse tables strategy 2 [CONSUMES TABLE ELEMENTS]
         table_parse_time_strategy_2, elements = await with_timings_async(
