@@ -2,6 +2,7 @@ import functools
 import io
 from typing import List, Tuple, TypedDict, Optional
 
+from llama_index.core.node_parser import NodeParser
 from llama_index.multi_modal_llms.openai import OpenAIMultiModal
 from pydantic.v1 import BaseModel
 from unstructured.file_utils.filetype import detect_filetype
@@ -18,7 +19,6 @@ from SemanticDocumentParser.element_parsers.remove_small import remove_small
 from SemanticDocumentParser.element_parsers.semantic_splitter import semantic_splitter
 from SemanticDocumentParser.element_parsers.semantic_tables import semantic_tables
 from SemanticDocumentParser.element_parsers.window_parser import window_parser
-from SemanticDocumentParser.llama_extensions.node_parser import AsyncSemanticSplitterNodeParser
 from SemanticDocumentParser.utils import with_timings_sync, with_timings_async
 
 
@@ -40,11 +40,10 @@ class SemanticDocumentParser(BaseModel):
     """
 
     llm_model: OpenAIMultiModal
-    node_parser: AsyncSemanticSplitterNodeParser
+    node_parser: NodeParser
 
     class Config:
         arbitrary_types_allowed = True
-
 
     @classmethod
     def partition(cls, **kwargs):
