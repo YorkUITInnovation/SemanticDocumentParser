@@ -1,6 +1,7 @@
+import asyncio
 import functools
 import io
-from typing import List, Tuple, TypedDict, Optional
+from typing import List, Tuple, TypedDict, Optional, Awaitable, Callable
 
 from llama_index.core.node_parser import NodeParser
 from llama_index.multi_modal_llms.openai import OpenAIMultiModal
@@ -76,13 +77,15 @@ class SemanticDocumentParser(BaseModel):
     async def aparse(
             self,
             document: io.BytesIO,
-            document_filename: str
+            document_filename: str,
+            on_step_finished: Callable[[str, float], Awaitable[None]] = lambda x, y: asyncio.sleep(0)
     ) -> Tuple[List[dict], SemanticDocumentParserStats]:
         """
         Asynchronously (where possible) parse the document
 
         :param document: The document to parse of any type unstructured supports
         :param document_filename: The name of the doc
+        :param on_step_finished: A callback to call when a step is finished
         :return: A list of elements existing as distinct chunks of NarrativeText
 
         """
@@ -98,6 +101,8 @@ class SemanticDocumentParser(BaseModel):
                 content_type="application/octet-stream",
             )
         )
+
+        await on_step_finished('Unstructured Partition', element_parse_time)
 
         # If there are no elements, don't run the parsers
         if len(elements) < 1:
@@ -116,6 +121,7 @@ class SemanticDocumentParser(BaseModel):
 
         # Parse document metadata
         metadata_parse_time, _ = with_timings_sync(fn=functools.partial(metadata_parser, elements))
+        await on_step_finished('Metadata Parsing', metadata_parse_time)
 
         # Parse tables strategy 1 [DOES NOT CONSUME TABLE ELEMENTS]
         # Must occur BEFORE the semantic splitter
@@ -123,13 +129,19 @@ class SemanticDocumentParser(BaseModel):
             fn=functools.partial(al_table_parser, elements)
         )
 
+        await on_step_finished('Table Parsing 1/2', table_parse_time_strategy_1)
+
         # Group the list items into individual nodes
         list_parse_time, elements = with_timings_sync(fn=functools.partial(list_parser, elements))
+
+        await on_step_finished('List Parsing', list_parse_time)
 
         # Group elements by title separation, then split unrelated texts into smaller ones
         # Note that the way grouping is set up, the auto-caption will be used in the 'Title' element since these descriptions
         # tend to be longer & we don't want to pollute
         paragraph_parse_time, elements = await with_timings_async(semantic_splitter(elements, self.node_parser))
+
+        await on_step_finished('Paragraph Parsing', paragraph_parse_time)
 
         # Parse tables strategy 2 [CONSUMES TABLE ELEMENTS]
         table_parse_time_strategy_2, elements = await with_timings_async(
@@ -139,6 +151,8 @@ class SemanticDocumentParser(BaseModel):
             )
         )
 
+        await on_step_finished('Table Parsing 2/2', table_parse_time_strategy_2)
+
         # Caption images
         image_caption_time, dict_elements = await with_timings_async(
             image_captioner(
@@ -147,15 +161,21 @@ class SemanticDocumentParser(BaseModel):
             )
         )
 
+        await on_step_finished('Image Captioning', image_caption_time)
+
         # Combine nodes naively with the Window approach (smaller nodes)
         combine_window_time, dict_elements = with_timings_sync(
             fn=functools.partial(window_parser, dict_elements)
         )
 
+        await on_step_finished('Window Combination', combine_window_time)
+
         dict_elements = remove_small(
             dict_elements,
             min_length=10
         )
+
+        await on_step_finished('Remove Small Nodes', 0)
 
         return (
             dict_elements,
