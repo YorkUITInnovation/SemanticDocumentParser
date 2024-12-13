@@ -7,7 +7,7 @@ manifest: dict = {
     "name": "SemanticDocumentParser",
     "license": "MIT",
     "author": "Isaac Kogan",
-    "version": "0.1.4.post6",
+    "version": "0.1.5",
     "email": "info@isaackogan.com"
 }
 
@@ -31,8 +31,8 @@ if __name__ == '__main__':
             "llama-index-embeddings-azure-openai==0.2.5",
             "bs4",
             "pandas",
-            "unstructured[all-docs]==0.16.4",
-            "unstructured_expanded==0.16.5",  # should have been .4 but i messed up. remember in future to keep parity with unstructured
+            "unstructured[all-docs]==0.16.11",
+            "unstructured_expanded==0.16.11",  # should have been .4 but i messed up. remember in future to keep parity with unstructured
             "numpy==1.26.4"
         ],
         classifiers=[

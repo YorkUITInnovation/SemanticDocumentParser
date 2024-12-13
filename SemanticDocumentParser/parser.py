@@ -10,8 +10,8 @@ from unstructured.file_utils.filetype import detect_filetype
 from unstructured.file_utils.model import FileType
 from unstructured.partition.auto import partition
 from unstructured_expanded.partition.docx import partition_docx
+from unstructured_expanded.partition.pdf import partition_pdf
 from unstructured_expanded.partition.pptx.partition_pptx import partition_pptx
-
 from SemanticDocumentParser.element_parsers.al_tables import al_table_parser
 from SemanticDocumentParser.element_parsers.image_captioner import image_captioner
 from SemanticDocumentParser.element_parsers.list_parser import list_parser
@@ -67,6 +67,12 @@ class SemanticDocumentParser(BaseModel):
             # Use the expanded partition method for PPTX files
             return functools.partial(
                 partition_pptx, **kwargs
+            )
+
+        if file_type == FileType.PDF:
+            # Use the expanded partition method for PDF files
+            return functools.partial(
+                partition_pdf, **kwargs
             )
 
         # Otherwise, default the basic partitioning for other types
