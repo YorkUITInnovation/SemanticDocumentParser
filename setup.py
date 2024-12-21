@@ -7,7 +7,7 @@ manifest: dict = {
     "name": "SemanticDocumentParser",
     "license": "MIT",
     "author": "Isaac Kogan",
-    "version": "0.1.5",
+    "version": "0.1.5.post1",
     "email": "info@isaackogan.com"
 }
 
@@ -32,7 +32,7 @@ if __name__ == '__main__':
             "bs4",
             "pandas",
             "unstructured[all-docs]==0.16.11",
-            "unstructured_expanded==0.16.11",  # should have been .4 but i messed up. remember in future to keep parity with unstructured
+            "unstructured_expanded==0.16.11.post1",  # should have been .4 but i messed up. remember in future to keep parity with unstructured
             "numpy==1.26.4"
         ],
         classifiers=[
