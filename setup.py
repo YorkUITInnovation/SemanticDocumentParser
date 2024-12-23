@@ -7,7 +7,7 @@ manifest: dict = {
     "name": "SemanticDocumentParser",
     "license": "MIT",
     "author": "Isaac Kogan",
-    "version": "0.1.5.post2",
+    "version": "0.1.5.post3",
     "email": "info@isaackogan.com"
 }
 

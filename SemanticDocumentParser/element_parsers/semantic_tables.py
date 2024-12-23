@@ -63,7 +63,10 @@ def _parse_llm_json_response(response: ChatResponse) -> list[str]:
         if not isinstance(element_texts[0], str):
             raise JSONDecodeError("LLM returned invalid JSON string for Table", response.message.content, 0)
         return element_texts
-    except (JSONDecodeError, IndexError):
+    except IndexError:
+        # Happens if the array is empty (which happens if the table is empty)
+        return []
+    except JSONDecodeError:
         logging.error(
             "Failed to parse a table! Got invalid reply: "
             + response.message.content + "\n"
