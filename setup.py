@@ -31,8 +31,8 @@ if __name__ == '__main__':
             "llama-index-embeddings-azure-openai==0.2.5",
             "bs4",
             "pandas",
-            "unstructured[all-docs]==0.16.11",
-            "unstructured_expanded==0.16.11.post2",  # should have been .4 but i messed up. remember in future to keep parity with unstructured
+            "unstructured[all-docs]==0.17.2",
+            "unstructured_expanded==0.17.2",
             "numpy==1.26.4"
         ],
         classifiers=[
@@ -41,9 +41,8 @@ if __name__ == '__main__':
             "Topic :: Software Development :: Build Tools",
             "License :: OSI Approved :: MIT License",
             "Natural Language :: English",
-            "Programming Language :: Python :: 3.8",
-            "Programming Language :: Python :: 3.9",
             "Programming Language :: Python :: 3.10",
             "Programming Language :: Python :: 3.11",
+            "Programming Language :: Python :: 3.12",
         ]
     )

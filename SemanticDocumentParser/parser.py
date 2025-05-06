@@ -8,10 +8,11 @@ from llama_index.multi_modal_llms.openai import OpenAIMultiModal
 from pydantic.v1 import BaseModel
 from unstructured.file_utils.filetype import detect_filetype
 from unstructured.file_utils.model import FileType
-from unstructured.partition.auto import partition
+from unstructured.partition.auto import partition as partition_auto
 from unstructured_expanded.partition.docx import partition_docx
 from unstructured_expanded.partition.pdf import partition_pdf
 from unstructured_expanded.partition.pptx.partition_pptx import partition_pptx
+
 from SemanticDocumentParser.element_parsers.al_tables import al_table_parser
 from SemanticDocumentParser.element_parsers.image_captioner import image_captioner
 from SemanticDocumentParser.element_parsers.list_parser import list_parser
@@ -34,6 +35,13 @@ class SemanticDocumentParserStats(TypedDict):
     image_caption_time: Optional[float]
 
 
+PARSER_OVERRIDE_MAP: dict[FileType, Callable] = {
+    FileType.DOCX: partition_docx,
+    FileType.PDF: partition_pdf,
+    FileType.PPTX: partition_pptx,
+}
+
+
 class SemanticDocumentParser(BaseModel):
     """
     Split nodes into semantic units
@@ -48,37 +56,19 @@ class SemanticDocumentParser(BaseModel):
 
     @classmethod
     def partition(cls, **kwargs):
-
+        # Detect the encoding
         file_type: FileType = detect_filetype(
-            file_path=kwargs.get("filename"),
             file=kwargs.get("file"),
             encoding=kwargs.get("encoding"),
             content_type=kwargs.get("content_type"),
             metadata_file_path=kwargs.get("metadata_filename"),
         )
 
-        if file_type == FileType.DOCX:
-            # Use the expanded partition method for DOCX files
-            return functools.partial(
-                partition_docx, **kwargs
-            )
-
-        if file_type == FileType.PPTX:
-            # Use the expanded partition method for PPTX files
-            return functools.partial(
-                partition_pptx, **kwargs
-            )
-
-        if file_type == FileType.PDF:
-            # Use the expanded partition method for PDF files
-            return functools.partial(
-                partition_pdf, **kwargs
-            )
+        # Get the partition function from our definitions
+        partition_fn = PARSER_OVERRIDE_MAP.get(file_type, partition_auto)
 
         # Otherwise, default the basic partitioning for other types
-        return functools.partial(
-            partition, **kwargs
-        )
+        return functools.partial(partition_fn, **kwargs)
 
     async def aparse(
             self,
@@ -99,12 +89,11 @@ class SemanticDocumentParser(BaseModel):
         # Generate the document-agnostic array
         element_parse_time, elements = with_timings_sync(
             fn=self.partition(
+                # Note: Do NOT specify 'encoding' or 'content_type' here, it's auto-determined
                 file=document,
                 metadata_filename=document_filename,
                 languages=["en", "fr"],
-                xml_keep_tags=True,
-                encoding="application/octet-stream",
-                content_type="application/octet-stream",
+                xml_keep_tags=True
             )
         )
 
