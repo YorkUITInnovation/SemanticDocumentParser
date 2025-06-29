@@ -5,13 +5,12 @@ from unstructured.documents.elements import Element
 
 def _parse_element_urls(element: Element) -> None:
     """
-    Replace the URL in-text into the element. In-place modification of element.
+    Replace the URL in-text into the element using Markdown hyperlink syntax. In-place modification of element.
 
     Known Limitation: Unstructured does not parse the hyperlinks within Table elements.
 
     :param element: The element to parse
     :return: None
-
     """
 
     change_delta: int = 0
@@ -22,12 +21,12 @@ def _parse_element_urls(element: Element) -> None:
         link_text: str = link['text']
         end_index: int = start_index + len(link_text)
 
-        # Create the embedded language
-        new_text = f" (The link URL is {link['url']})"
-        change_delta += len(new_text)
-        element.text = element.text[:start_index] + link_text + new_text + element.text[end_index:]
+        # Create Markdown link
+        markdown_link = f"[{link_text}]({link['url']})"
+        change_delta += len(markdown_link) - len(link_text)
+        element.text = element.text[:start_index] + markdown_link + element.text[end_index:]
 
-    # No need for those anymore!
+    # Clean up unused metadata
     element.metadata.link_texts = None
     element.metadata.links = None
     element.metadata.link_urls = None
@@ -48,10 +47,6 @@ def metadata_parser(elements: List[Element]) -> None:
         # Must have a link in the element
         if element.metadata.links:
             _parse_element_urls(element)
-
-        # Category / Parent Metadata is garbage and never works
-        element.metadata.parent_id = None
-        element.metadata.category_depth = None
 
         # Other stuff we don't care about
         element.metadata.filetype = None

@@ -77,7 +77,8 @@ async def _semantic_split_node(
     )
 
     elements: List[NarrativeText] = []
-    title_text: str = title_node.text if title_node else ""
+    header_level: str = ("#" * title_node.metadata.category_depth) if title_node and hasattr(title_node.metadata, 'category_depth') else "##"
+    title_text: str = (header_level + " " + title_node.text) if title_node else ""
 
     # Regenerate NarrativeText elements
     for llama_node in llama_nodes:

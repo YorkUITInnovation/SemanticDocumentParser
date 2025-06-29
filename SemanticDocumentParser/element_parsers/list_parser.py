@@ -1,40 +1,49 @@
-from typing import List, Optional, Generator
+from typing import Generator
+from typing import List, Optional
 
 from unstructured.documents.elements import Element, ListItem, NarrativeText, Title, PageBreak
 
 
-def _list_group_parser(elements: List[ListItem], header_node: Optional[NarrativeText]) -> List[NarrativeText]:
+def _list_group_parser(elements: List[ListItem], header_node: Optional[NarrativeText]) -> List[Element]:
     """
-    Deconstruct a list group into semantic units that relate to the previous node
+    Deconstruct a list group into semantic units grouped into chunks with labeled headers.
 
     :param elements: The elements in the group
     :param header_node: The node just prior to the ListItem list
     :return: The deconstructed list
-
     """
 
-    nodes: List[NarrativeText] = []
-    header_text: str = header_node.text + "\n\n" if header_node else ""
-    footer_text: str = f" There were {len(elements)} items."
+    nodes: List[Element] = []
+    header_title: str = header_node.text if header_node else "Untitled"
+    header_level: str = (("#" * header_node.metadata.category_depth) if header_node and hasattr(header_node.metadata, 'category_depth') else "##") + "#"
+    header_sub_level = header_level + "#"
+    full_list_text = "\n".join([f"- {element.text}" for element in elements])
 
-    # For SMALL lists, combine all items into one node.
-    # For large lists, we can't do this as it will be too long and combined with windows, exceed max context.
-    potential_node_text: str = header_text + "\n".join(["- " + element.text for element in elements]) + footer_text
-    if len(potential_node_text) < 750:
-        nodes.append(
-            NarrativeText(
-                text=potential_node_text,
-            )
-        )
+    # If total text is short, return as a single NarrativeText node without group headers
+    if len(full_list_text) < 750:
+        return [NarrativeText(text=full_list_text)]
 
-    # Create NarrativeText elements from each ListItem
-    for idx, element in enumerate(elements):
-        nodes.append(
-            NarrativeText(
-                text=header_text + f"List Item #{idx + 1}): " + element.text,
-                metadata=element.metadata,
-            )
-        )
+    group_number = 1
+    current_group: List[str] = []
+    current_length = 0
+
+    def make_group_text(group_items: List[str], number: int) -> NarrativeText:
+        group_header = f"{header_level} {header_title}\n\n{header_sub_level} Part {number}:\n\n"
+        group_text = group_header + "\n".join(group_items)
+        return NarrativeText(text=group_text)
+
+    for element in elements:
+        item_text = f"- {element.text}"
+        if current_length + len(item_text) > 1500 and current_group:
+            nodes.append(make_group_text(current_group, group_number))
+            group_number += 1
+            current_group = []
+            current_length = 0
+        current_group.append(item_text)
+        current_length += len(item_text)
+
+    if current_group:
+        nodes.append(make_group_text(current_group, group_number))
 
     return nodes
 
