@@ -20,6 +20,14 @@ async def image_captioner(elements: List[dict], llm: OpenAIMultiModal) -> List[d
         if element['type'] != 'Image':
             continue
 
+        # Must have a metadata field
+        if 'metadata' not in element:
+            continue
+
+        # Must have a base64 field
+        if 'image_base64' not in element['metadata']:
+            continue
+
         image_document = ImageDocument(
             image=element['metadata']['image_base64'],
             image_mimetype="image/jpeg"
