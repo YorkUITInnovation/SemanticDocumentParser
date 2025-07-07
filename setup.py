@@ -7,7 +7,7 @@ manifest: dict = {
     "name": "SemanticDocumentParser",
     "license": "MIT",
     "author": "Isaac Kogan",
-    "version": "0.1.8",
+    "version": "0.1.8.post1",
     "email": "info@isaackogan.com"
 }
 
@@ -33,7 +33,9 @@ if __name__ == '__main__':
             "pandas",
             "unstructured[all-docs]==0.17.2",
             "unstructured_expanded==0.17.2",
-            "numpy==1.26.4"
+            "numpy==1.26.4",
+            "httpx",
+            "puremagic==1.30"
         ],
         classifiers=[
             "Development Status :: 4 - Beta",
