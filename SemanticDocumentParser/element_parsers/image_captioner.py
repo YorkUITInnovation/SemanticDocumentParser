@@ -2,7 +2,7 @@ import base64
 import io
 import logging
 import traceback
-from typing import List, Optional
+from typing import List
 
 import httpx
 import puremagic
@@ -11,7 +11,7 @@ from llama_index.core.schema import ImageDocument
 from llama_index.multi_modal_llms.openai import OpenAIMultiModal
 
 
-async def get_base64(metadata: dict) -> Optional[str]:
+async def get_base64(metadata: dict) -> dict | None:
     try:
 
         async with httpx.AsyncClient() as client:
@@ -41,7 +41,10 @@ async def get_base64(metadata: dict) -> Optional[str]:
                 return None
 
             # Return b64
-            return base64.b64encode(image_bytes).decode('utf-8')
+            return {
+                'image_base64': base64.b64encode(image_bytes).decode('utf-8'),
+                'image_mime_type': magic_value.mime_type,
+            }
 
     except:
         logging.warning("Failed to download an image for a file. This can most likely be ignored.", traceback.format_exc())
@@ -60,11 +63,13 @@ async def image_captioner(elements: List[dict], llm: OpenAIMultiModal) -> List[d
 
     for element in elements:
 
+        print(element)
+
         if element['type'] != 'Image' or 'metadata' not in element:
             continue
 
         if 'image_url' in element['metadata']:
-            element['metadata']['image_base64'] = await get_base64(element['metadata'])
+            element['metadata'] = {**element['metadata'], **await get_base64(element['metadata'])}
             if not element['metadata']['image_base64']:
                 continue
 
