@@ -15,7 +15,19 @@ def _list_group_parser(elements: List[ListItem], header_node: Optional[Narrative
 
     nodes: List[Element] = []
     header_title: str = header_node.text if header_node else "Untitled"
-    header_level: str = (("#" * header_node.metadata.category_depth) if header_node and hasattr(header_node.metadata, 'category_depth') else "##") + "#"
+
+    if (
+            header_node and
+            hasattr(header_node.metadata, 'category_depth') and
+            header_node.metadata.category_depth is not None and
+            isinstance(header_node.metadata.category_depth, int)
+    ):
+        prefix = "#" * header_node.metadata.category_depth
+    else:
+        prefix = "##"
+
+    header_level: str = prefix + "#"
+
     header_sub_level = header_level + "#"
     full_list_text = "\n".join([f"- {element.text}" for element in elements])
 
