@@ -63,8 +63,6 @@ async def image_captioner(elements: List[dict], llm: OpenAIMultiModal) -> List[d
 
     for element in elements:
 
-        print(element)
-
         if element['type'] != 'Image' or 'metadata' not in element:
             continue
 
