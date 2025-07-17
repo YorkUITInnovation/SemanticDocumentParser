@@ -69,8 +69,8 @@ async def image_captioner(elements: List[dict], llm: OpenAIMultiModal) -> List[d
             continue
 
         if 'image_url' in element['metadata']:
-            element['metadata'] = {**element['metadata'], **await get_base64(element['metadata'])}
-            if not element['metadata']['image_base64']:
+            element['metadata'] = {**element['metadata'], **(await get_base64(element['metadata']) or {})}
+            if 'image_base64' not in element['metadata']:
                 continue
 
         image_document = ImageDocument(
