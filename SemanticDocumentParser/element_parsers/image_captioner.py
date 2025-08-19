@@ -106,39 +106,65 @@ async def image_captioner(elements: List[dict], llm: OpenAIMultiModal) -> List[d
         if element['type'] != 'Image' or 'metadata' not in element:
             continue
 
+        # Try multiple possible sources for image data
+        base64_data = None
+
         # Handle images with URLs
         if 'image_url' in element['metadata']:
             base64_data = await get_base64(element['metadata'])
             if base64_data:
                 element['metadata'] = {**element['metadata'], **base64_data}
 
-        # Handle inline base64 images from data URIs
-        elif 'image_src' in element['metadata'] and element['metadata']['image_src'].startswith('data:'):
-            base64_data = extract_base64_from_data_uri(element['metadata']['image_src'])
-            if base64_data:
-                element['metadata'] = {**element['metadata'], **base64_data}
+        # Handle inline base64 images from data URIs - try multiple possible keys
+        elif not base64_data:
+            for key in ['image_src', 'src', 'image_path', 'url']:
+                if key in element['metadata'] and isinstance(element['metadata'][key], str):
+                    if element['metadata'][key].startswith('data:'):
+                        base64_data = extract_base64_from_data_uri(element['metadata'][key])
+                        if base64_data:
+                            element['metadata'] = {**element['metadata'], **base64_data}
+                            break
+
+        # Handle case where base64 data is already present under different keys
+        if not base64_data and 'image_base64' not in element['metadata']:
+            for key in ['base64', 'image_data', 'data']:
+                if key in element['metadata'] and isinstance(element['metadata'][key], str):
+                    # Check if it looks like base64 data
+                    try:
+                        base64.b64decode(element['metadata'][key])
+                        element['metadata']['image_base64'] = element['metadata'][key]
+                        element['metadata']['image_mime_type'] = 'image/jpeg'  # default
+                        break
+                    except Exception:
+                        continue
 
         # Skip if we don't have base64 image data
         if 'image_base64' not in element['metadata']:
+            logging.debug(f"Skipping image element {element.get('element_id', 'unknown')} - no base64 data found. Available metadata keys: {list(element['metadata'].keys())}")
             continue
 
-        image_document = ImageDocument(
-            image=element['metadata']['image_base64'],
-            image_mimetype=element['metadata'].get('image_mime_type', "image/jpeg")
-        )
+        try:
+            image_document = ImageDocument(
+                image=element['metadata']['image_base64'],
+                image_mimetype=element['metadata'].get('image_mime_type', "image/jpeg")
+            )
 
-        response: CompletionResponse = await llm.acomplete(
-            prompt=(
-                "You are an agent part of a RAG pipeline. You will be given a single image. Your job is to describe everything in the image. "
-                "If the image contains math formulae, you should write out those formulae in plain text. Whatever text you reply with will be used "
-                "directly as a text element in a vector database as part of a RAG pipeline, so optimize your description for RAG. Avoid using phrases like "
-                "'This is a picture of' or 'This image shows'. Instead, describe the image directly. "
-                "Focus entirely on what is depicted, using simple, direct language optimized for retrieval."
-            ),
-            image_documents=[image_document],
-        )
+            response: CompletionResponse = await llm.acomplete(
+                prompt=(
+                    "You are an agent part of a RAG pipeline. You will be given a single image. Your job is to describe everything in the image. "
+                    "If the image contains math formulae, you should write out those formulae in plain text. Whatever text you reply with will be used "
+                    "directly as a text element in a vector database as part of a RAG pipeline, so optimize your description for RAG. Avoid using phrases like "
+                    "'This is a picture of' or 'This image shows'. Instead, describe the image directly. "
+                    "Focus entirely on what is depicted, using simple, direct language optimized for retrieval."
+                ),
+                image_documents=[image_document],
+            )
 
-        element['metadata']['auto_caption'] = element['text']
-        element['text'] = f"[IMAGE {element['element_id']} DESCRIPTION START]{response.text}[IMAGE {element['element_id']} DESCRIPTION END]"
+            element['metadata']['auto_caption'] = element['text']
+            element['text'] = f"[IMAGE {element['element_id']} DESCRIPTION START]{response.text}[IMAGE {element['element_id']} DESCRIPTION END]"
+
+        except Exception as e:
+            logging.warning(f"Failed to caption image element {element.get('element_id', 'unknown')}: {str(e)}")
+            continue
 
     return elements
