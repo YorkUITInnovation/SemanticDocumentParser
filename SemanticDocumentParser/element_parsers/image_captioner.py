@@ -1,6 +1,7 @@
 import base64
 import io
 import logging
+import re
 import traceback
 from typing import List
 
@@ -9,6 +10,45 @@ import puremagic
 from llama_index.core.base.llms.types import CompletionResponse
 from llama_index.core.schema import ImageDocument
 from llama_index.multi_modal_llms.openai import OpenAIMultiModal
+
+
+def extract_base64_from_data_uri(data_uri: str) -> dict | None:
+    """
+    Extract base64 data and mime type from a data URI like 'data:image/png;base64,iVBOR...'
+    """
+    try:
+        # Match data URI pattern: data:mime_type;base64,data
+        match = re.match(r'^data:([^;]+);base64,(.+)$', data_uri)
+        if not match:
+            return None
+
+        mime_type, base64_data = match.groups()
+
+        # Validate it's an image mime type
+        if not mime_type.startswith('image/'):
+            return None
+
+        # Validate base64 data by trying to decode it
+        try:
+            decoded_data = base64.b64decode(base64_data)
+            # Validate it's actually an image using puremagic
+            stream = io.BytesIO(decoded_data)
+            magic_value = puremagic.magic_stream(stream)[0]
+
+            if 'image' not in magic_value.mime_type or magic_value.confidence < 0.7:
+                return None
+
+        except Exception:
+            return None
+
+        return {
+            'image_base64': base64_data,
+            'image_mime_type': mime_type,
+        }
+
+    except Exception:
+        logging.warning("Failed to extract base64 from data URI", traceback.format_exc())
+        return None
 
 
 async def get_base64(metadata: dict) -> dict | None:
@@ -66,14 +106,25 @@ async def image_captioner(elements: List[dict], llm: OpenAIMultiModal) -> List[d
         if element['type'] != 'Image' or 'metadata' not in element:
             continue
 
+        # Handle images with URLs
         if 'image_url' in element['metadata']:
-            element['metadata'] = {**element['metadata'], **(await get_base64(element['metadata']) or {})}
-            if 'image_base64' not in element['metadata']:
-                continue
+            base64_data = await get_base64(element['metadata'])
+            if base64_data:
+                element['metadata'] = {**element['metadata'], **base64_data}
+
+        # Handle inline base64 images from data URIs
+        elif 'image_src' in element['metadata'] and element['metadata']['image_src'].startswith('data:'):
+            base64_data = extract_base64_from_data_uri(element['metadata']['image_src'])
+            if base64_data:
+                element['metadata'] = {**element['metadata'], **base64_data}
+
+        # Skip if we don't have base64 image data
+        if 'image_base64' not in element['metadata']:
+            continue
 
         image_document = ImageDocument(
             image=element['metadata']['image_base64'],
-            image_mimetype="image/jpeg"
+            image_mimetype=element['metadata'].get('image_mime_type', "image/jpeg")
         )
 
         response: CompletionResponse = await llm.acomplete(
