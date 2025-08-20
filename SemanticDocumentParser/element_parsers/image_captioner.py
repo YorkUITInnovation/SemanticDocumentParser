@@ -66,14 +66,36 @@ async def image_captioner(elements: List[dict], llm: OpenAIMultiModal) -> List[d
         if element['type'] != 'Image' or 'metadata' not in element:
             continue
 
+        # Handle images with URLs (download and detect MIME type)
         if 'image_url' in element['metadata']:
             element['metadata'] = {**element['metadata'], **(await get_base64(element['metadata']) or {})}
             if 'image_base64' not in element['metadata']:
                 continue
 
+        # Skip if no image data is available
+        if 'image_base64' not in element['metadata']:
+            continue
+
+        # Use the detected MIME type if available, otherwise fallback to jpeg
+        mime_type = element['metadata'].get('image_mime_type', 'image/jpeg')
+
+        # Skip SVG files as they're not supported by vision models
+        if mime_type == 'image/svg+xml':
+            logging.warning(f"Skipping SVG image {element.get('element_id', 'unknown')} - not supported by vision models")
+            # Clean up metadata to prevent downstream errors
+            element['metadata'].pop('image_mime_type', None)
+            element['metadata'].pop('image_base64', None)
+            continue
+
+        # Ensure we have a supported image format
+        supported_formats = ['image/jpeg', 'image/png', 'image/gif', 'image/bmp', 'image/tiff', 'image/webp']
+        if mime_type not in supported_formats:
+            logging.warning(f"Image format {mime_type} may not be supported, using jpeg fallback")
+            mime_type = 'image/jpeg'
+
         image_document = ImageDocument(
             image=element['metadata']['image_base64'],
-            image_mimetype="image/jpeg"
+            image_mimetype=mime_type
         )
 
         response: CompletionResponse = await llm.acomplete(
