@@ -61,31 +61,71 @@ async def image_captioner(elements: List[dict], llm: OpenAIMultiModal) -> List[d
     if 'gpt-3' in llm.metadata.model_name:
         return elements
 
-    for element in elements:
+    # Filter out SVG images and other unsupported elements first
+    filtered_elements = []
 
+    for element in elements:
+        # Keep non-image elements as-is
         if element['type'] != 'Image' or 'metadata' not in element:
+            filtered_elements.append(element)
             continue
 
         # Handle images with URLs (download and detect MIME type)
         if 'image_url' in element['metadata']:
-            element['metadata'] = {**element['metadata'], **(await get_base64(element['metadata']) or {})}
+            download_result = await get_base64(element['metadata'])
+            if download_result:
+                element['metadata'] = {**element['metadata'], **download_result}
+
+            # If download failed, remove the element completely (no alt text preservation)
             if 'image_base64' not in element['metadata']:
+                logging.warning(f"Failed to download image {element.get('element_id', 'unknown')}, removing from processing")
                 continue
 
         # Skip if no image data is available
         if 'image_base64' not in element['metadata']:
+            logging.warning(f"Image element {element.get('element_id', 'unknown')} has no image data, removing from processing")
+            continue
+
+        # Get and validate base64 data
+        base64_data = element['metadata']['image_base64']
+        if not base64_data or (isinstance(base64_data, str) and not base64_data.strip()):
+            logging.warning(f"Image element {element.get('element_id', 'unknown')} has empty/invalid base64 data, removing from processing")
             continue
 
         # Use the detected MIME type if available, otherwise fallback to jpeg
         mime_type = element['metadata'].get('image_mime_type', 'image/jpeg')
 
+        # Normalize and validate mime type
+        if isinstance(mime_type, str):
+            mime_type = mime_type.lower().strip()
+
+        # Skip images with missing, None, or invalid mime type
+        if not mime_type or mime_type is None or 'image_mime_type' not in element['metadata']:
+            logging.warning(f"Image element {element.get('element_id', 'unknown')} has missing/invalid mime type, removing from processing")
+            continue
+
+        # Validate mime type format (must start with 'image/')
+        if not mime_type.startswith('image/'):
+            logging.warning(f"Image element {element.get('element_id', 'unknown')} has invalid mime type format '{mime_type}', removing from processing")
+            continue
+
         # Skip SVG files as they're not supported by vision models
         if mime_type == 'image/svg+xml':
-            logging.warning(f"Skipping SVG image {element.get('element_id', 'unknown')} - not supported by vision models")
-            # Clean up metadata to prevent downstream errors
-            element['metadata'].pop('image_mime_type', None)
-            element['metadata'].pop('image_base64', None)
+            logging.warning(f"Removing SVG image {element.get('element_id', 'unknown')} - not supported by vision models")
             continue
+
+        # Update the normalized mime type back to metadata
+        element['metadata']['image_mime_type'] = mime_type
+
+        # Keep supported image elements
+        filtered_elements.append(element)
+
+    # Now process the filtered elements for captioning
+    for element in filtered_elements:
+        if element['type'] != 'Image' or 'metadata' not in element:
+            continue
+
+        mime_type = element['metadata'].get('image_mime_type', 'image/jpeg')
 
         # Ensure we have a supported image format
         supported_formats = ['image/jpeg', 'image/png', 'image/gif', 'image/bmp', 'image/tiff', 'image/webp']
@@ -112,4 +152,4 @@ async def image_captioner(elements: List[dict], llm: OpenAIMultiModal) -> List[d
         element['metadata']['auto_caption'] = element['text']
         element['text'] = f"[IMAGE {element['element_id']} DESCRIPTION START]{response.text}[IMAGE {element['element_id']} DESCRIPTION END]"
 
-    return elements
+    return filtered_elements
