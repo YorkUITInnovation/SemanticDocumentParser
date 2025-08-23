@@ -110,6 +110,10 @@ async def _semantic_split_element_group(
 
     # First represent the entire group itself, in case that provides more complete meaning
     nodes: List[Element] = []
+    # preserve the heading Title at the start of this group
+    if group['title_node'] is not None:
+        nodes.append(group['title_node'])
+
     parse_tasks: List[Task] = []
 
     for node in group['nodes']:
