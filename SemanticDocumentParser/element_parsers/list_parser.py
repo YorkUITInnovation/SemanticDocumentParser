@@ -31,9 +31,11 @@ def _list_group_parser(elements: List[ListItem], header_node: Optional[Narrative
     header_sub_level = header_level + "#"
     full_list_text = "\n".join([f"- {element.text}" for element in elements])
 
-    # If total text is short, return as a single NarrativeText node without group headers
+    # If total text is short, return as a single NarrativeText node including group header
     if len(full_list_text) < 750:
-        return [NarrativeText(text=full_list_text)]
+        # include the header context so list nodes retain their section title
+        heading_prefix = f"{header_level} {header_title}\n\n"
+        return [NarrativeText(text=heading_prefix + full_list_text)]
 
     group_number = 1
     current_group: List[str] = []
@@ -87,31 +89,40 @@ def list_parser(elements: List[Element]) -> List[Element]:
     """
 
     nodes: List[Element] = []
-    header_node: Optional[Element] = None
-
-    list_group: List[ListItem] = []
+    last_title: Optional[Title] = None
     last_node: Optional[Element] = None
+    list_group: List[ListItem] = []
+    header_node: Optional[Title] = None
 
     for element in _iterate_without_page_breaks(elements):
 
-        # If it's a list item then add it to the current group
-        if isinstance(element, ListItem):
-            list_group.append(element)
-
-            # If the last node was text & now it's a list, set the header node
-            if isinstance(last_node, NarrativeText) or isinstance(last_node, Title):
-                header_node = last_node
-
-        else:
-            # If not a list item just add it directly
-            nodes.append(element)
-
-            # If the last node was a list node & now it isn't, run the parser
-            if isinstance(last_node, ListItem):
+        if isinstance(element, Title):
+            # flush any open list
+            if list_group:
                 nodes.extend(_list_group_parser(list_group, header_node))
                 list_group = []
                 header_node = None
+            nodes.append(element)
+            last_title = element
+        elif isinstance(element, ListItem):
+            if not list_group:
+                # start new list group: use last seen Title as header
+                header_node = last_title
+                # drop narrative intro if it exists
+                if isinstance(last_node, NarrativeText) and last_node != header_node and nodes:
+                    nodes.pop()
+            list_group.append(element)
+        else:
+            # non-list element: flush list if open
+            if list_group:
+                nodes.extend(_list_group_parser(list_group, header_node))
+                list_group = []
+                header_node = None
+            nodes.append(element)
 
         last_node = element
 
+    # flush at end
+    if list_group:
+        nodes.extend(_list_group_parser(list_group, header_node))
     return nodes
