@@ -1,12 +1,12 @@
 import asyncio
 import itertools
+import os
+import tempfile
 from asyncio import Task
 from typing import List, TypedDict, Optional, Tuple
 
-from llama_index.core.schema import Document, BaseNode
+from ragflow_sdk import RAGFlow
 from unstructured.documents.elements import Element, Title, NarrativeText
-
-from SemanticDocumentParser.llama_extensions.node_parser import AsyncSemanticSplitterNodeParser
 
 
 class ElementGroup(TypedDict):
@@ -54,41 +54,49 @@ def _create_element_groups(elements: List[Element]) -> List[ElementGroup]:
 async def _semantic_split_node(
         title_node: Optional[Title],
         node: NarrativeText,
-        node_parser: AsyncSemanticSplitterNodeParser
+        ragflow_client: RAGFlow,
+        dataset_id: str
 ) -> List[NarrativeText]:
     """
     Run semantic splitting on each text node to subdivide bulky paragraphs into semantic units
 
     :param title_node: The Title the node falls under
     :param node: The node to parse
-    :param node_parser: The node parser to use
+    :param ragflow_client: The RAGFlow client
+    :param dataset_id: The ID of the RAGFlow dataset
     :return: The unstructured NarrativeText elements
 
     """
-
-    # Note: Uses a Llama-Index Document type
-    document: Document = Document(
-        text=node.text
-    )
-
-    # Note: Produces Llama-Index nodes
-    llama_nodes: List[BaseNode] = await node_parser.abuild_semantic_nodes_from_documents(
-        documents=[document]
-    )
 
     elements: List[NarrativeText] = []
     header_level: str = ("#" * (title_node.metadata.category_depth or 2)) if title_node and hasattr(title_node.metadata, 'category_depth') else "##"
     title_text: str = (header_level + " " + title_node.text) if title_node else ""
 
-    # Regenerate NarrativeText elements
-    for llama_node in llama_nodes:
-        elements.append(
-            NarrativeText(
-                # The title node may be important to describe the node contents
-                text=title_text + "\n" + llama_node.text,
-                metadata=node.metadata
+    # Create a temporary file to upload to RAGflow
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".txt") as temp_file:
+        temp_file.write(node.text)
+        temp_file_path = temp_file.name
+
+    try:
+        # Upload the file to RAGflow in a separate thread
+        upload_result = await asyncio.to_thread(ragflow_client.upload_file, dataset_id, temp_file_path)
+        doc_id = upload_result['doc_ids'][0]
+
+        # Get the chunks from RAGflow in a separate thread
+        chunks = await asyncio.to_thread(ragflow_client.get_chunks, doc_id)
+
+        # Regenerate NarrativeText elements
+        for chunk in chunks:
+            elements.append(
+                NarrativeText(
+                    # The title node may be important to describe the node contents
+                    text=title_text + "\n" + chunk['content'],
+                    metadata=node.metadata
+                )
             )
-        )
+    finally:
+        # Clean up the temporary file
+        os.remove(temp_file_path)
 
     return elements
 
@@ -98,12 +106,15 @@ PARSER_GENERATED_SIGNATURE = "PARSER_GENERATED"
 
 async def _semantic_split_element_group(
         group: ElementGroup,
-        node_parser: AsyncSemanticSplitterNodeParser
+        ragflow_client: RAGFlow,
+        dataset_id: str
 ):
     """
     Process an element group. Semantically split paragraphs into further nodes.
 
     :param group: The element group to process
+    :param ragflow_client: The RAGFlow client
+    :param dataset_id: The ID of the RAGFlow dataset
     :return: The 1D processed node split
 
     """
@@ -128,7 +139,8 @@ async def _semantic_split_element_group(
                 _semantic_split_node(
                     group['title_node'],
                     node,
-                    node_parser
+                    ragflow_client,
+                    dataset_id
                 )
             )
         )
@@ -140,7 +152,8 @@ async def _semantic_split_element_group(
 
 async def semantic_splitter(
         elements: List[Element],
-        node_parser: AsyncSemanticSplitterNodeParser
+        ragflow_client: RAGFlow,
+        dataset_id: str
 ) -> List[Element]:
     """
 
@@ -156,7 +169,8 @@ async def semantic_splitter(
     Edge Cases Handled:
         - Adjacent titles
 
-    :param node_parser: The parser used to semantically split NarrativeText elements
+    :param ragflow_client: The RAGFlow client
+    :param dataset_id: The ID of the RAGFlow dataset
     :param elements: All elements in the document
     :return: The new list of elements with relationships respected
 
@@ -170,7 +184,7 @@ async def semantic_splitter(
         parse_tasks.append(
             asyncio.create_task(
                 _semantic_split_element_group(
-                    group, node_parser
+                    group, ragflow_client, dataset_id
                 )
             )
         )

@@ -3,12 +3,11 @@ import io
 import logging
 import traceback
 from typing import List
+import asyncio
 
 import httpx
 import puremagic
-from llama_index.core.base.llms.types import CompletionResponse
-from llama_index.core.schema import ImageDocument
-from llama_index.multi_modal_llms.openai import OpenAIMultiModal
+from ragflow_sdk import RAGFlow
 
 
 async def get_base64(metadata: dict) -> dict | None:
@@ -51,15 +50,15 @@ async def get_base64(metadata: dict) -> dict | None:
         return None
 
 
-async def image_captioner(elements: List[dict], llm: OpenAIMultiModal) -> List[dict]:
+async def image_captioner(elements: List[dict], ragflow_client: RAGFlow, doc_id: str) -> List[dict]:
     """
     Caption images using the LLM.
 
     """
 
-    # 3-series models do not support image input
-    if 'gpt-3' in llm.metadata.model_name:
-        return elements
+    # Get the chunks from RAGflow in a separate thread
+    chunks = await asyncio.to_thread(ragflow_client.get_chunks, doc_id)
+    image_chunks = [chunk for chunk in chunks if chunk.get('type') == 'image']
 
     # Filter out SVG images and other unsupported elements first
     filtered_elements = []
@@ -125,31 +124,13 @@ async def image_captioner(elements: List[dict], llm: OpenAIMultiModal) -> List[d
         if element['type'] != 'Image' or 'metadata' not in element:
             continue
 
-        mime_type = element['metadata'].get('image_mime_type', 'image/jpeg')
-
-        # Ensure we have a supported image format
-        supported_formats = ['image/jpeg', 'image/png', 'image/gif', 'image/bmp', 'image/tiff', 'image/webp']
-        if mime_type not in supported_formats:
-            logging.warning(f"Image format {mime_type} may not be supported, using jpeg fallback")
-            mime_type = 'image/jpeg'
-
-        image_document = ImageDocument(
-            image=element['metadata']['image_base64'],
-            image_mimetype=mime_type
-        )
-
-        response: CompletionResponse = await llm.acomplete(
-            prompt=(
-                "You are an agent part of a RAG pipeline. You will be given a single image. Your job is to describe everything in the image. "
-                "If the image contains math formulae, you should write out those formulae in plain text. Whatever text you reply with will be used "
-                "directly as a text element in a vector database as part of a RAG pipeline, so optimize your description for RAG. Avoid using phrases like "
-                "'This is a picture of' or 'This image shows'. Instead, describe the image directly. "
-                "Focus entirely on what is depicted, using simple, direct language optimized for retrieval."
-            ),
-            image_documents=[image_document],
-        )
-
-        element['metadata']['auto_caption'] = element['text']
-        element['text'] = f"[IMAGE {element['element_id']} DESCRIPTION START]{response.text}[IMAGE {element['element_id']} DESCRIPTION END]"
+        # Find the corresponding image chunk from RAGflow
+        # This is a bit of a hack, we are assuming the images are in the same order
+        if image_chunks:
+            image_chunk = image_chunks.pop(0)
+            caption = image_chunk.get('content', '')
+            element['metadata']['auto_caption'] = element['text']
+            element['text'] = f"[IMAGE {element['element_id']} DESCRIPTION START]{caption}[IMAGE {element['element_id']} DESCRIPTION END]"
 
     return filtered_elements
+

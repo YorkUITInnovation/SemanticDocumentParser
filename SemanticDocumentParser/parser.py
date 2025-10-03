@@ -1,11 +1,12 @@
 import asyncio
 import functools
 import io
+import os
+import tempfile
 from typing import List, Tuple, TypedDict, Optional, Awaitable, Callable
 
-from llama_index.core.node_parser import NodeParser
-from llama_index.multi_modal_llms.openai import OpenAIMultiModal
 from pydantic.v1 import BaseModel
+from ragflow_sdk import RAGFlow
 from unstructured.file_utils.filetype import detect_filetype
 from unstructured.file_utils.model import FileType
 from unstructured.partition.auto import partition as partition_auto
@@ -48,8 +49,8 @@ class SemanticDocumentParser(BaseModel):
 
     """
 
-    llm_model: OpenAIMultiModal
-    node_parser: NodeParser
+    ragflow_client: RAGFlow
+    dataset_id: str
 
     class Config:
         arbitrary_types_allowed = True
@@ -85,6 +86,23 @@ class SemanticDocumentParser(BaseModel):
         :return: A list of elements existing as distinct chunks of NarrativeText
 
         """
+
+        # Create a temporary file to upload to RAGflow
+        with tempfile.NamedTemporaryFile(mode="wb", delete=False, suffix=os.path.splitext(document_filename)[1]) as temp_file:
+            file_content = document.read()
+            temp_file.write(file_content)
+            temp_file_path = temp_file.name
+        
+        document.seek(0) # Reset the file pointer
+
+        try:
+            # Upload the file to RAGflow in a separate thread
+            upload_result = await asyncio.to_thread(self.ragflow_client.upload_file, self.dataset_id, temp_file_path)
+            doc_id = upload_result['doc_ids'][0]
+        finally:
+            # Clean up the temporary file
+            os.remove(temp_file_path)
+
 
         # Generate the document-agnostic array
         element_parse_time, elements = with_timings_sync(
@@ -134,7 +152,7 @@ class SemanticDocumentParser(BaseModel):
         # Group elements by title separation, then split unrelated texts into smaller ones
         # Note that the way grouping is set up, the auto-caption will be used in the 'Title' element since these descriptions
         # tend to be longer & we don't want to pollute
-        paragraph_parse_time, elements = await with_timings_async(semantic_splitter(elements, self.node_parser))
+        paragraph_parse_time, elements = await with_timings_async(semantic_splitter(elements, self.ragflow_client, doc_id))
 
         await on_step_finished('Paragraph Parsing', paragraph_parse_time)
 
@@ -142,7 +160,8 @@ class SemanticDocumentParser(BaseModel):
         table_parse_time_strategy_2, elements = await with_timings_async(
             semantic_tables(
                 elements,
-                self.llm_model
+                self.ragflow_client,
+                doc_id
             )
         )
 
@@ -152,7 +171,8 @@ class SemanticDocumentParser(BaseModel):
         image_caption_time, dict_elements = await with_timings_async(
             image_captioner(
                 [element.to_dict() for element in elements],
-                self.llm_model
+                self.ragflow_client,
+                doc_id
             )
         )
 

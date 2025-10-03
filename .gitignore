@@ -1,8 +1,28 @@
+# JetBrains
 .idea
 .venv
-*.docx
-test.py
-requirements.txt
+
+# Sensitive Files
 *.pdf
-out.json
-*.html
+*.docs
+*.env
+.env
+*.egg-info/
+
+# Cache Files
+tiktoken
+
+# Doc
+doc/
+
+# Python
+__pycache__/
+*.py[cod]
+*.class
+
+# IDE
+.vscode/
+.idea/
+
+# Test
+.pytest_cache
