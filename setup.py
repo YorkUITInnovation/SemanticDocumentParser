@@ -25,7 +25,7 @@ if __name__ == '__main__':
         long_description=long_description,
         long_description_content_type="text/markdown",
         install_requires=[
-            "ragflow-sdk>=0.1.0,<0.3.0",
+            "ragflow-sdk==0.20.5",
             "bs4",
             "pandas",
             "unstructured[all-docs]==0.17.2",
