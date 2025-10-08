@@ -46,7 +46,7 @@ async def get_base64(metadata: dict) -> dict | None:
             }
 
     except:
-        logging.warning("Failed to download an image for a file. This can most likely be ignored.", traceback.format_exc())
+        logging.warning("Failed to download an image for a file. This can most likely be ignored.", exc_info=True)
         return None
 
 

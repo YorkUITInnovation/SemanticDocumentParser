@@ -5,7 +5,7 @@ import os
 import tempfile
 from typing import List, Tuple, TypedDict, Optional, Awaitable, Callable
 
-from pydantic.v1 import BaseModel
+from pydantic import BaseModel, ConfigDict
 from ragflow_sdk import RAGFlow
 from unstructured.file_utils.filetype import detect_filetype
 from unstructured.file_utils.model import FileType
@@ -52,8 +52,7 @@ class SemanticDocumentParser(BaseModel):
     ragflow_client: RAGFlow
     dataset_id: str
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @classmethod
     def partition(cls, **kwargs):

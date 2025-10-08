@@ -25,6 +25,7 @@ if __name__ == '__main__':
         long_description=long_description,
         long_description_content_type="text/markdown",
         install_requires=[
+            "pydantic==2.9.2",
             "ragflow-sdk==0.20.5",
             "bs4",
             "pandas",
@@ -39,6 +40,7 @@ if __name__ == '__main__':
                 "pytest",
                 "pytest-mock",
                 "pytest-asyncio",
+                "pytest-cov",
             ],
         },
         classifiers=[

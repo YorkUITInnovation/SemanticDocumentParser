@@ -8,6 +8,8 @@
 *.env
 .env
 *.egg-info/
+build/
+dist/
 
 # Cache Files
 tiktoken
@@ -26,3 +28,4 @@ __pycache__/
 
 # Test
 .pytest_cache
+.coverage
