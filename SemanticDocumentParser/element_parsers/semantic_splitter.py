@@ -79,8 +79,8 @@ async def _semantic_split_node(
 
     try:
         # Upload the file to RAGflow in a separate thread
-        upload_result = await asyncio.to_thread(ragflow_client.upload_file, dataset_id, temp_file_path)
-        doc_id = upload_result['doc_ids'][0]
+        upload_result = await ragflow_client.upload_file(dataset_id, temp_file_path)
+        doc_id = upload_result['document_name']
 
         # Get the chunks from RAGflow in a separate thread
         chunks = await asyncio.to_thread(ragflow_client.get_chunks, doc_id)

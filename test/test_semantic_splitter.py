@@ -9,8 +9,8 @@ class DummyRAGFlow(RAGFlow):
     def __init__(self, api_key: str, host: str, port: int):
         super().__init__(api_key, host, port)
 
-    def upload_file(self, dataset_id: str, file_path: str):
-        return {"doc_ids": ["test_doc_id"]}
+    async def upload_file(self, dataset_id: str, file_path: str):
+        return {"document_name": "test_doc_id"}
 
     def get_chunks(self, doc_id: str):
         pass

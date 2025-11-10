@@ -1,6 +1,6 @@
 from unstructured.documents.elements import NarrativeText
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, AsyncMock
 import io
 from SemanticDocumentParser.parser import SemanticDocumentParser
 from ragflow_sdk import RAGFlow
@@ -9,7 +9,7 @@ class DummyRAGFlow(RAGFlow):
     def __init__(self, api_key: str, host: str, port: int):
         super().__init__(api_key, host, port)
 
-    def upload_file(self, dataset_id: str, file_path: str):
+    async def upload_file(self, dataset_id: str, file_path: str):
         pass
 
     def get_chunks(self, doc_id: str):
@@ -19,7 +19,7 @@ class DummyRAGFlow(RAGFlow):
 def mock_ragflow_client():
     """Fixture for a mocked RAGFlow client."""
     mock_client = DummyRAGFlow(api_key="test", host="test", port=80)
-    mock_client.upload_file = MagicMock(return_value={"doc_ids": ["test_doc_id"]})
+    mock_client.upload_file = AsyncMock(return_value={"document_name": "test_doc_id"})
     mock_client.get_chunks = MagicMock(return_value=[
         {"type": "text", "content": "This is a text chunk."},
         {"type": "image", "content": "This is an image caption."},

@@ -96,8 +96,8 @@ class SemanticDocumentParser(BaseModel):
 
         try:
             # Upload the file to RAGflow in a separate thread
-            upload_result = await asyncio.to_thread(self.ragflow_client.upload_file, self.dataset_id, temp_file_path)
-            doc_id = upload_result['doc_ids'][0]
+            upload_result = await self.ragflow_client.upload_file(self.dataset_id, temp_file_path)
+            doc_id = upload_result['document_name']
         finally:
             # Clean up the temporary file
             os.remove(temp_file_path)
