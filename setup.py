@@ -25,10 +25,8 @@ if __name__ == '__main__':
         long_description=long_description,
         long_description_content_type="text/markdown",
         install_requires=[
-            "llama-index-core==0.11.21",
-            "llama-index-llms-azure-openai==0.2.2",
-            "llama-index-multi-modal-llms-azure-openai==0.2.0",
-            "llama-index-embeddings-azure-openai==0.2.5",
+            "pydantic==2.9.2",
+            "ragflow-sdk==0.20.5",
             "bs4",
             "pandas",
             "unstructured[all-docs]==0.17.2",
@@ -37,6 +35,14 @@ if __name__ == '__main__':
             "httpx",
             "puremagic==1.30"
         ],
+        extras_require={
+            "tests": [
+                "pytest",
+                "pytest-mock",
+                "pytest-asyncio",
+                "pytest-cov",
+            ],
+        },
         classifiers=[
             "Development Status :: 4 - Beta",
             "Intended Audience :: Developers",
