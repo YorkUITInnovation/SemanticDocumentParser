@@ -1,6 +1,7 @@
 import asyncio
 import functools
 import io
+import logging
 import os
 import tempfile
 from typing import List, Tuple, TypedDict, Optional, Awaitable, Callable
@@ -86,21 +87,40 @@ class SemanticDocumentParser(BaseModel):
 
         """
 
+        logger = logging.getLogger(__name__)
+
         # Create a temporary file to upload to RAGflow
-        with tempfile.NamedTemporaryFile(mode="wb", delete=False, suffix=os.path.splitext(document_filename)[1]) as temp_file:
+        with tempfile.NamedTemporaryFile(
+            mode="wb",
+            delete=False,
+            suffix=os.path.splitext(document_filename)[1],
+        ) as temp_file:
             file_content = document.read()
             temp_file.write(file_content)
             temp_file_path = temp_file.name
-        
-        document.seek(0) # Reset the file pointer
+
+        document.seek(0)  # Reset the file pointer
 
         try:
-            # Upload the file to RAGflow in a separate thread
-            upload_result = await self.ragflow_client.upload_file(self.dataset_id, temp_file_path)
-            doc_id = upload_result['document_name']
+            # Upload the file to RAGflow
+            upload_result = await self.ragflow_client.upload_file(
+                self.dataset_id, temp_file_path
+            )
+            if not upload_result or "document_name" not in upload_result:
+                raise ValueError("RAGflow upload failed: missing document_name in response")
+            doc_id = upload_result["document_name"]
+        except Exception as exc:
+            logger.error("Failed to upload file to RAGflow", exc_info=exc)
+            raise ValueError(f"Failed to upload document to RAGflow: {exc}") from exc
         finally:
-            # Clean up the temporary file
-            os.remove(temp_file_path)
+            # Clean up the temporary file (best-effort)
+            try:
+                if os.path.exists(temp_file_path):
+                    os.remove(temp_file_path)
+            except OSError as exc:
+                logger.warning(
+                    "Failed to remove temporary file %s: %s", temp_file_path, exc
+                )
 
 
         # Generate the document-agnostic array
