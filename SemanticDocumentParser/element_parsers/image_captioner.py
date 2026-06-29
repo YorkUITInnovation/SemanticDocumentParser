@@ -1,7 +1,6 @@
 import base64
 import io
 import logging
-import traceback
 from typing import List
 import asyncio
 
@@ -45,8 +44,11 @@ async def get_base64(metadata: dict) -> dict | None:
                 'image_mime_type': magic_value.mime_type,
             }
 
-    except:
-        logging.warning("Failed to download an image for a file. This can most likely be ignored.", exc_info=True)
+    except (httpx.HTTPError, puremagic.PureError, ValueError, OSError) as exc:
+        logging.warning(
+            "Failed to download an image for a file. This can most likely be ignored. reason=%s",
+            exc,
+        )
         return None
 
 

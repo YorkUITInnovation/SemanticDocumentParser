@@ -1,7 +1,9 @@
 import pytest
+import logging
 from unittest.mock import MagicMock, AsyncMock
 from SemanticDocumentParser.element_parsers.image_captioner import image_captioner, get_base64
 from ragflow_sdk import RAGFlow
+import httpx
 
 class DummyRAGFlow(RAGFlow):
     def __init__(self, api_key: str, host: str, port: int):
@@ -40,6 +42,19 @@ async def test_get_base64_invalid_image(mocker):
     metadata = {'image_url': 'http://example.com/not_an_image'}
     result = await get_base64(metadata)
     assert result is None
+
+
+@pytest.mark.asyncio
+async def test_get_base64_network_error_logs_warning_without_traceback(mocker, caplog):
+    mocker.patch('httpx.AsyncClient.get', side_effect=httpx.ConnectError("All connection attempts failed"))
+
+    metadata = {'image_url': 'http://example.com/unreachable.png'}
+    with caplog.at_level(logging.WARNING):
+        result = await get_base64(metadata)
+
+    assert result is None
+    assert "Failed to download an image for a file." in caplog.text
+    assert "Traceback" not in caplog.text
 
 @pytest.mark.asyncio
 async def test_image_captioner_with_mocked_data(mock_ragflow_client):
